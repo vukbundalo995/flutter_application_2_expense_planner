@@ -1,5 +1,8 @@
+import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
+import 'package:flutter/services.dart';
+import 'dart:io';
 
 import 'widgets/new_transaction.dart';
 import './models/transaction.dart';
@@ -7,6 +10,8 @@ import './widgets/transaction_list.dart';
 import './widgets/chart.dart';
 
 void main() {
+  WidgetsFlutterBinding.ensureInitialized();
+  //SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
   runApp(const MyApp());
 }
 
@@ -21,6 +26,8 @@ class MyApp extends StatelessWidget {
         primarySwatch: Colors.green,
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.green),
         fontFamily: 'Quicksand',
+        floatingActionButtonTheme:
+            FloatingActionButtonThemeData(backgroundColor: Colors.green[800]),
       ),
       home: const MyHomePage(),
     );
@@ -38,6 +45,8 @@ class _MyHomePageState extends State<MyHomePage> {
 // List of all transactions
   final List<Transaction> _userTransactions = [];
 
+  bool _showChart = false;
+
 // Getting a list that contains only transactions from the last 7 days that we need to create a chart widget
   List<Transaction> get recentTransactions {
     return _userTransactions.where((tx) {
@@ -46,16 +55,22 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
 // Adds a new transaction to the list and sets state (used in NewTransaction widget)
-  void _addNewTransaction(String title, double amount) {
+  void _addNewTransaction(String title, double amount, DateTime pickedDate) {
     final newTx = Transaction(
       id: DateTime.now().toString(),
       title: title,
       amount: amount,
-      date: DateTime.now(),
+      date: pickedDate,
     );
 
     setState(() {
       _userTransactions.add(newTx);
+    });
+  }
+
+  void _deleteTransaction(String id) {
+    setState(() {
+      _userTransactions.removeWhere((tx) => tx.id == id);
     });
   }
 
@@ -70,30 +85,76 @@ class _MyHomePageState extends State<MyHomePage> {
 
   @override
   Widget build(BuildContext context) {
-    double appBarHeight = MediaQuery.of(context).padding.top;
+    final device = MediaQuery.of(context);
+    final isLanscape = device.orientation == Orientation.landscape;
+    final appBar = AppBar(
+      title: const Text('Personal Expenses'),
+      actions: [
+        IconButton(
+          onPressed: () => startAddTransaction(context),
+          icon: const Icon(Icons.add),
+        ),
+      ],
+    );
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Personal Expenses'),
-        actions: [
-          IconButton(
-            onPressed: () => startAddTransaction(context),
-            icon: const Icon(Icons.add),
+    final screenHeight = device.size.height -
+        appBar.preferredSize.height -
+        device.padding.top -
+        device.padding.bottom;
+    final transactionListWidget = SizedBox(
+      height: screenHeight * 0.7,
+      child: TransactionList(
+        transactions: _userTransactions,
+        deleteTransaction: _deleteTransaction,
+      ),
+    );
+
+    final pageBody = Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (isLanscape)
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Text('Show Chart'),
+              Switch.adaptive(
+                onChanged: (val) {
+                  setState(() {
+                    _showChart = val;
+                  });
+                },
+                value: _showChart,
+              ),
+            ],
           ),
-        ],
-      ),
-      body: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        Chart(
-          recentTransactions: _userTransactions,
-        ),
-        TransactionList(
-          transactions: recentTransactions,
-        ),
-      ]),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => startAddTransaction(context),
-        child: const Icon(Icons.add),
-      ),
+        if (!isLanscape)
+          SizedBox(
+            height: screenHeight * 0.3,
+            child: Chart(
+              recentTransactions: recentTransactions,
+            ),
+          ),
+        if (!isLanscape) transactionListWidget,
+        if (isLanscape)
+          _showChart
+              ? SizedBox(
+                  height: screenHeight * 0.9,
+                  child: Chart(
+                    recentTransactions: recentTransactions,
+                  ),
+                )
+              : transactionListWidget,
+      ],
+    );
+    return Scaffold(
+      appBar: appBar,
+      body: pageBody,
+      floatingActionButton: Platform.isIOS
+          ? Container()
+          : FloatingActionButton(
+              onPressed: () => startAddTransaction(context),
+              child: const Icon(Icons.add),
+            ),
     );
   }
 }

@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
@@ -5,15 +6,16 @@ import '../models/transaction.dart';
 
 class TransactionList extends StatelessWidget {
   final List<Transaction> transactions;
+  final Function deleteTransaction;
 
-  const TransactionList({required this.transactions, super.key});
+  const TransactionList(
+      {required this.transactions, required this.deleteTransaction, super.key});
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      height: 759,
-      child: transactions.isEmpty
-          ? Column(
+    return transactions.isEmpty
+        ? LayoutBuilder(builder: (ctx, constraints) {
+            return Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 const Text('No transactions added yet!'),
@@ -21,60 +23,64 @@ class TransactionList extends StatelessWidget {
                   height: 20,
                 ),
                 SizedBox(
-                  height: 200,
+                  height: constraints.maxHeight * 0.6,
                   child: Image.asset(
                     'assets/images/waiting.png',
                     fit: BoxFit.cover,
                   ),
                 )
               ],
-            )
-          : ListView.builder(
-              itemBuilder: (context, index) {
-                return Card(
-                  child: Row(
-                    children: [
-                      Container(
-                        margin: const EdgeInsets.symmetric(
-                            vertical: 15, horizontal: 10),
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          border: Border.all(
-                              color: Theme.of(context).colorScheme.primary,
-                              width: 3),
-                        ),
-                        child: Text(
-                          '\$${transactions[index].amount.toStringAsFixed(2)}',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 20,
-                            color: Theme.of(context).colorScheme.primary,
-                          ),
+            );
+          })
+        : ListView.builder(
+            itemBuilder: (context, index) {
+              return ListTile(
+                leading: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    SizedBox(
+                      width: 107,
+                      child: Text(
+                        '\$${transactions[index].amount.toStringAsFixed(2)}',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 20,
+                          color: Theme.of(context).colorScheme.primary,
                         ),
                       ),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            transactions[index].title,
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
-                            ),
-                          ),
-                          Text(
-                            DateFormat('dd-MM-yy')
-                                .format(transactions[index].date),
-                            style: const TextStyle(color: Colors.grey),
-                          ),
-                        ],
-                      )
-                    ],
+                    ),
+                  ],
+                ),
+                title: Text(
+                  transactions[index].title,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
                   ),
-                );
-              },
-              itemCount: transactions.length,
-            ),
-    );
+                ),
+                subtitle: Text(
+                  DateFormat('dd-MM-yy').format(transactions[index].date),
+                  style: const TextStyle(color: Colors.grey),
+                ),
+                trailing: MediaQuery.of(context).size.width > 500
+                    ? TextButton.icon(
+                        onPressed: () =>
+                            deleteTransaction(transactions[index].id),
+                        icon: Icon(Icons.delete,
+                            color: Theme.of(context).colorScheme.error),
+                        label: Text('Delete',
+                            style: TextStyle(
+                                color: Theme.of(context).colorScheme.error)),
+                      )
+                    : IconButton(
+                        icon: const Icon(CupertinoIcons.delete),
+                        onPressed: () =>
+                            deleteTransaction(transactions[index].id),
+                        color: Theme.of(context).colorScheme.error,
+                      ),
+              );
+            },
+            itemCount: transactions.length,
+          );
   }
 }
